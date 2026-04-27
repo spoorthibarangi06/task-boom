@@ -1,8 +1,9 @@
 import { Link, useNavigate } from "@tanstack/react-router";
-import { HardHat, Moon, Sun, LogOut } from "lucide-react";
+import { Moon, Sun, LogOut } from "lucide-react";
 import { useTheme } from "@/lib/theme";
 import { useApp } from "@/lib/store";
 import { Button } from "@/components/ui/button";
+import logo from "@/assets/sitepulse-logo.jpg";
 
 export function SiteHeader() {
   const { theme, toggleTheme } = useTheme();
@@ -12,14 +13,12 @@ export function SiteHeader() {
   return (
     <header className="sticky top-0 z-40 border-b border-border/60 bg-background/80 backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6">
-        <Link to="/" className="flex items-center gap-2.5">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-primary shadow-glow">
-            <HardHat className="h-5 w-5 text-primary-foreground" />
-          </div>
-          <div>
-            <div className="font-display text-lg font-bold leading-none">SitePulse</div>
-            <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Build. Track. Deliver.</div>
-          </div>
+        <Link to="/" className="flex items-center gap-2" aria-label="SitePulse home">
+          <img
+            src={logo}
+            alt="SitePulse logo"
+            className="h-10 w-auto object-contain mix-blend-multiply dark:mix-blend-screen dark:invert"
+          />
         </Link>
 
         <nav className="hidden items-center gap-8 md:flex">
