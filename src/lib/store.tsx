@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 export type TaskStatus = "pending" | "in_progress" | "done";
 export type Role = "admin" | "engineer" | "worker";
@@ -40,11 +41,12 @@ export interface Project {
 
 interface AppState {
   user: User | null;
+  authLoading: boolean;
   projects: Project[];
   tasks: Task[];
   updates: Update[];
   login: (user: User) => void;
-  logout: () => void;
+  logout: () => Promise<void>;
   addProject: (p: Omit<Project, "id">) => void;
   addTask: (t: Omit<Task, "id" | "createdAt">) => void;
   updateTaskStatus: (id: string, status: TaskStatus) => void;
@@ -88,39 +90,76 @@ const seedUpdates: Update[] = [
 
 const id = () => Math.random().toString(36).slice(2, 10);
 
+async function hydrateUserFromSession(userId: string, email: string | undefined): Promise<User> {
+  const { data } = await supabase
+    .from("profiles")
+    .select("name")
+    .eq("user_id", userId)
+    .maybeSingle();
+  return {
+    id: userId,
+    email: email ?? "",
+    name: data?.name ?? (email ? email.split("@")[0] : "User"),
+    role: "engineer",
+  };
+}
+
 export function AppProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
   const [projects, setProjects] = useState<Project[]>(seedProjects);
   const [tasks, setTasks] = useState<Task[]>(seedTasks);
   const [updates, setUpdates] = useState<Update[]>(seedUpdates);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const u = localStorage.getItem("sitepulse-user");
-    if (u) setUser(JSON.parse(u));
-  }, []);
 
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    if (user) localStorage.setItem("sitepulse-user", JSON.stringify(user));
-    else localStorage.removeItem("sitepulse-user");
-  }, [user]);
+    // Set up listener FIRST
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        // Defer Supabase call to avoid deadlock inside callback
+        setTimeout(() => {
+          hydrateUserFromSession(session.user.id, session.user.email).then(setUser);
+        }, 0);
+      } else {
+        setUser(null);
+      }
+    });
+
+    // Then check existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        hydrateUserFromSession(session.user.id, session.user.email).then((u) => {
+          setUser(u);
+          setAuthLoading(false);
+        });
+      } else {
+        setAuthLoading(false);
+      }
+    });
+
+    return () => sub.subscription.unsubscribe();
+  }, []);
 
   const value: AppState = useMemo(
     () => ({
       user,
+      authLoading,
       projects,
       tasks,
       updates,
       login: (u) => setUser(u),
-      logout: () => setUser(null),
+      logout: async () => {
+        await supabase.auth.signOut();
+        setUser(null);
+      },
       addProject: (p) => setProjects((prev) => [{ ...p, id: id() }, ...prev]),
       addTask: (t) => setTasks((prev) => [{ ...t, id: id(), createdAt: new Date().toISOString() }, ...prev]),
       updateTaskStatus: (taskId, status) =>
         setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, status } : t))),
       addUpdate: (u) => setUpdates((prev) => [{ ...u, id: id(), createdAt: new Date().toISOString() }, ...prev]),
     }),
-    [user, projects, tasks, updates],
+    [user, authLoading, projects, tasks, updates],
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
