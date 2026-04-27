@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Plus, ClipboardList, GanttChartSquare, MessageSquare, Camera, AlertTriangle, CheckCircle2, Clock, Calendar, ImagePlus } from "lucide-react";
+import { Plus, ClipboardList, GanttChartSquare, MessageSquare, Camera, AlertTriangle, CheckCircle2, Clock, Calendar, ImagePlus, Users } from "lucide-react";
 import { SiteHeader } from "@/components/SiteHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { useApp, type TaskStatus, type Task, type Project } from "@/lib/store";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/dashboard")({
@@ -24,13 +25,13 @@ export const Route = createFileRoute("/dashboard")({
 });
 
 function Dashboard() {
-  const { user, projects, tasks } = useApp();
+  const { user, authLoading, projects, tasks } = useApp();
   const navigate = useNavigate();
   const [activeProjectId, setActiveProjectId] = useState<string | null>(projects[0]?.id ?? null);
 
   useEffect(() => {
-    if (!user) navigate({ to: "/auth" });
-  }, [user, navigate]);
+    if (!authLoading && !user) navigate({ to: "/auth" });
+  }, [user, authLoading, navigate]);
 
   useEffect(() => {
     if (!activeProjectId && projects[0]) setActiveProjectId(projects[0].id);
@@ -71,6 +72,8 @@ function Dashboard() {
           <StatCard icon={CheckCircle2} label="Done" value={stats.done} tone="success" />
           <StatCard icon={AlertTriangle} label="Delayed" value={stats.delayed} tone="destructive" />
         </div>
+
+        <TeamMembers />
 
         <div className="mt-8 grid gap-6 lg:grid-cols-[320px_1fr]">
           <ProjectsSidebar projects={projects} activeId={activeProjectId} onSelect={setActiveProjectId} />
@@ -498,5 +501,82 @@ function UpdateDialog({ taskId, children }: { taskId: string; children: React.Re
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+interface ProfileRow {
+  id: string;
+  name: string;
+  email: string;
+  created_at: string;
+}
+
+function TeamMembers() {
+  const [members, setMembers] = useState<ProfileRow[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let mounted = true;
+    const load = async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id, name, email, created_at")
+        .order("created_at", { ascending: false });
+      if (!mounted) return;
+      if (error) {
+        toast.error("Could not load team members");
+      } else {
+        setMembers(data ?? []);
+      }
+      setLoading(false);
+    };
+    load();
+    return () => { mounted = false; };
+  }, []);
+
+  return (
+    <section className="mt-8 rounded-2xl border border-border bg-card p-6 shadow-sm">
+      <div className="mb-4 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
+            <Users className="h-4 w-4" />
+          </span>
+          <div>
+            <h2 className="font-display text-lg font-bold">Team members</h2>
+            <p className="text-xs text-muted-foreground">Everyone who has signed up to this workspace.</p>
+          </div>
+        </div>
+        <span className="text-xs text-muted-foreground">{members.length} total</span>
+      </div>
+
+      {loading ? (
+        <p className="py-6 text-center text-sm text-muted-foreground">Loading…</p>
+      ) : members.length === 0 ? (
+        <p className="py-6 text-center text-sm text-muted-foreground">No members yet.</p>
+      ) : (
+        <div className="overflow-hidden rounded-xl border border-border">
+          <table className="w-full text-sm">
+            <thead className="bg-secondary/60 text-xs uppercase tracking-wider text-muted-foreground">
+              <tr>
+                <th className="px-4 py-2 text-left font-semibold">Name</th>
+                <th className="px-4 py-2 text-left font-semibold">Email</th>
+                <th className="px-4 py-2 text-left font-semibold">Joined</th>
+              </tr>
+            </thead>
+            <tbody>
+              {members.map((m) => (
+                <tr key={m.id} className="border-t border-border">
+                  <td className="px-4 py-2.5 font-medium">{m.name}</td>
+                  <td className="px-4 py-2.5 text-muted-foreground">{m.email}</td>
+                  <td className="px-4 py-2.5 text-xs text-muted-foreground">
+                    {new Date(m.created_at).toLocaleDateString()}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
   );
 }

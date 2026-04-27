@@ -1,12 +1,13 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { HardHat, ArrowLeft } from "lucide-react";
+import { HardHat, ArrowLeft, Loader2 } from "lucide-react";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useApp, type Role } from "@/lib/store";
+import { type Role } from "@/lib/store";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/auth")({
@@ -34,26 +35,57 @@ const loginSchema = z.object({
 function AuthPage() {
   const [mode, setMode] = useState<"login" | "signup">("login");
   const [name, setName] = useState("");
-  const [email, setEmail] = useState("demo@sitepulse.app");
-  const [password, setPassword] = useState("demo1234");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [role, setRole] = useState<Role>("engineer");
-  const { login } = useApp();
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (mode === "signup") {
-      const r = signupSchema.safeParse({ name, email, password, role });
-      if (!r.success) return toast.error(r.error.issues[0].message);
-      login({ id: crypto.randomUUID(), name: r.data.name, email: r.data.email, role: r.data.role });
-      toast.success(`Welcome, ${r.data.name.split(" ")[0]}!`);
-    } else {
-      const r = loginSchema.safeParse({ email, password });
-      if (!r.success) return toast.error(r.error.issues[0].message);
-      login({ id: crypto.randomUUID(), name: r.data.email.split("@")[0], email: r.data.email, role: "engineer" });
-      toast.success("Signed in");
+    if (loading) return;
+    setLoading(true);
+    try {
+      if (mode === "signup") {
+        const r = signupSchema.safeParse({ name, email, password, role });
+        if (!r.success) {
+          toast.error(r.error.issues[0].message);
+          return;
+        }
+        const { error } = await supabase.auth.signUp({
+          email: r.data.email,
+          password: r.data.password,
+          options: {
+            emailRedirectTo: `${window.location.origin}/dashboard`,
+            data: { name: r.data.name, role: r.data.role },
+          },
+        });
+        if (error) {
+          toast.error(error.message);
+          return;
+        }
+        toast.success(`Account created — welcome, ${r.data.name.split(" ")[0]}!`);
+        navigate({ to: "/dashboard" });
+      } else {
+        const r = loginSchema.safeParse({ email, password });
+        if (!r.success) {
+          toast.error(r.error.issues[0].message);
+          return;
+        }
+        const { error } = await supabase.auth.signInWithPassword({
+          email: r.data.email,
+          password: r.data.password,
+        });
+        if (error) {
+          toast.error(error.message);
+          return;
+        }
+        toast.success("Signed in");
+        navigate({ to: "/dashboard" });
+      }
+    } finally {
+      setLoading(false);
     }
-    navigate({ to: "/dashboard" });
   };
 
   return (
@@ -134,7 +166,8 @@ function AuthPage() {
               </div>
             )}
 
-            <Button type="submit" className="h-11 w-full bg-gradient-primary text-primary-foreground shadow-md hover:opacity-95">
+            <Button type="submit" disabled={loading} className="h-11 w-full bg-gradient-primary text-primary-foreground shadow-md hover:opacity-95">
+              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {mode === "login" ? "Sign in" : "Create account"}
             </Button>
           </form>

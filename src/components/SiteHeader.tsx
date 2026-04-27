@@ -36,7 +36,7 @@ export function SiteHeader() {
               <Button variant="ghost" asChild>
                 <Link to="/dashboard">Dashboard</Link>
               </Button>
-              <Button variant="outline" size="icon" onClick={() => { logout(); navigate({ to: "/" }); }} aria-label="Log out">
+              <Button variant="outline" size="icon" onClick={async () => { await logout(); navigate({ to: "/" }); }} aria-label="Log out">
                 <LogOut className="h-4 w-4" />
               </Button>
             </>
