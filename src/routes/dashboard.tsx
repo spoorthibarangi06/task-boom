@@ -73,6 +73,8 @@ function Dashboard() {
           <StatCard icon={AlertTriangle} label="Delayed" value={stats.delayed} tone="destructive" />
         </div>
 
+        <TeamMembers />
+
         <div className="mt-8 grid gap-6 lg:grid-cols-[320px_1fr]">
           <ProjectsSidebar projects={projects} activeId={activeProjectId} onSelect={setActiveProjectId} />
 
