@@ -166,7 +166,8 @@ function AuthPage() {
               </div>
             )}
 
-            <Button type="submit" className="h-11 w-full bg-gradient-primary text-primary-foreground shadow-md hover:opacity-95">
+            <Button type="submit" disabled={loading} className="h-11 w-full bg-gradient-primary text-primary-foreground shadow-md hover:opacity-95">
+              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {mode === "login" ? "Sign in" : "Create account"}
             </Button>
           </form>
