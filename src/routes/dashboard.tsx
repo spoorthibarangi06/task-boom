@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Plus, ClipboardList, GanttChartSquare, MessageSquare, Camera, AlertTriangle, CheckCircle2, Clock, Calendar, ImagePlus } from "lucide-react";
+import { Plus, ClipboardList, GanttChartSquare, MessageSquare, Camera, AlertTriangle, CheckCircle2, Clock, Calendar, ImagePlus, Users } from "lucide-react";
 import { SiteHeader } from "@/components/SiteHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { useApp, type TaskStatus, type Task, type Project } from "@/lib/store";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/dashboard")({
