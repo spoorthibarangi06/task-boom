@@ -25,13 +25,13 @@ export const Route = createFileRoute("/dashboard")({
 });
 
 function Dashboard() {
-  const { user, projects, tasks } = useApp();
+  const { user, authLoading, projects, tasks } = useApp();
   const navigate = useNavigate();
   const [activeProjectId, setActiveProjectId] = useState<string | null>(projects[0]?.id ?? null);
 
   useEffect(() => {
-    if (!user) navigate({ to: "/auth" });
-  }, [user, navigate]);
+    if (!authLoading && !user) navigate({ to: "/auth" });
+  }, [user, authLoading, navigate]);
 
   useEffect(() => {
     if (!activeProjectId && projects[0]) setActiveProjectId(projects[0].id);
