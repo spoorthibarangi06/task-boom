@@ -24,7 +24,6 @@ interface EmergencyProfile {
   organ_donor: boolean;
   notes: string | null;
   phone: string | null;
-  user_id: string;
 }
 
 interface Contact { id: string; name: string; relationship: string | null; phone: string; }
@@ -38,17 +37,13 @@ function EmergencyView() {
 
   useEffect(() => {
     (async () => {
-      const { data: p } = await supabase
-        .from("profiles")
-        .select("name,date_of_birth,blood_group,allergies,conditions,medications,organ_donor,notes,phone,user_id")
-        .eq("public_id", publicId)
-        .maybeSingle();
-      if (!p) { setNotFoundState(true); setLoading(false); return; }
-      setProfile(p as EmergencyProfile);
-      const { data: c } = await supabase
-        .from("emergency_contacts")
-        .select("id,name,relationship,phone")
-        .eq("user_id", (p as EmergencyProfile).user_id);
+      const [{ data: p }, { data: c }] = await Promise.all([
+        supabase.rpc("get_emergency_profile", { _public_id: publicId }),
+        supabase.rpc("get_emergency_contacts", { _public_id: publicId }),
+      ]);
+      const row = Array.isArray(p) ? p[0] : null;
+      if (!row) { setNotFoundState(true); setLoading(false); return; }
+      setProfile(row as EmergencyProfile);
       setContacts((c ?? []) as Contact[]);
       setLoading(false);
     })();
