@@ -14,28 +14,85 @@ export type Database = {
   }
   public: {
     Tables: {
-      profiles: {
+      emergency_contacts: {
         Row: {
           created_at: string
-          email: string
           id: string
           name: string
+          phone: string
+          relationship: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
           created_at?: string
-          email: string
           id?: string
           name: string
+          phone: string
+          relationship?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
           created_at?: string
-          email?: string
           id?: string
           name?: string
+          phone?: string
+          relationship?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          allergies: string | null
+          blood_group: string | null
+          conditions: string | null
+          created_at: string
+          date_of_birth: string | null
+          email: string
+          id: string
+          medications: string | null
+          name: string
+          notes: string | null
+          organ_donor: boolean
+          phone: string | null
+          public_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          allergies?: string | null
+          blood_group?: string | null
+          conditions?: string | null
+          created_at?: string
+          date_of_birth?: string | null
+          email: string
+          id?: string
+          medications?: string | null
+          name: string
+          notes?: string | null
+          organ_donor?: boolean
+          phone?: string | null
+          public_id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          allergies?: string | null
+          blood_group?: string | null
+          conditions?: string | null
+          created_at?: string
+          date_of_birth?: string | null
+          email?: string
+          id?: string
+          medications?: string | null
+          name?: string
+          notes?: string | null
+          organ_donor?: boolean
+          phone?: string | null
+          public_id?: string
           updated_at?: string
           user_id?: string
         }
