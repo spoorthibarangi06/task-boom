@@ -103,7 +103,29 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_emergency_contacts: {
+        Args: { _public_id: string }
+        Returns: {
+          id: string
+          name: string
+          phone: string
+          relationship: string
+        }[]
+      }
+      get_emergency_profile: {
+        Args: { _public_id: string }
+        Returns: {
+          allergies: string
+          blood_group: string
+          conditions: string
+          date_of_birth: string
+          medications: string
+          name: string
+          notes: string
+          organ_donor: boolean
+          phone: string
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
