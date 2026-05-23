@@ -1,182 +1,151 @@
-import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useState } from "react";
-import { HardHat, ArrowLeft, Loader2 } from "lucide-react";
-import { z } from "zod";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
+import { HeartPulse, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { type Role } from "@/lib/store";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
+import { useApp } from "@/lib/store";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/auth")({
-  head: () => ({
-    meta: [
-      { title: "Sign in to SitePulse" },
-      { name: "description", content: "Log in or create your SitePulse account to start tracking construction projects." },
-    ],
-  }),
+  head: () => ({ meta: [{ title: "Sign in — Emergency Health ID" }] }),
   component: AuthPage,
 });
 
-const signupSchema = z.object({
-  name: z.string().trim().min(2, "Name is too short").max(80),
-  email: z.string().trim().email("Enter a valid email").max(255),
-  password: z.string().min(6, "Password must be at least 6 characters").max(100),
-  role: z.enum(["admin", "engineer", "worker"]),
-});
-
-const loginSchema = z.object({
-  email: z.string().trim().email("Enter a valid email").max(255),
-  password: z.string().min(1, "Password is required").max(100),
-});
-
 function AuthPage() {
-  const [mode, setMode] = useState<"login" | "signup">("login");
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [role, setRole] = useState<Role>("engineer");
-  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const { user, authLoading } = useApp();
 
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (loading) return;
-    setLoading(true);
-    try {
-      if (mode === "signup") {
-        const r = signupSchema.safeParse({ name, email, password, role });
-        if (!r.success) {
-          toast.error(r.error.issues[0].message);
-          return;
-        }
-        const { error } = await supabase.auth.signUp({
-          email: r.data.email,
-          password: r.data.password,
-          options: {
-            emailRedirectTo: `${window.location.origin}/dashboard`,
-            data: { name: r.data.name, role: r.data.role },
-          },
-        });
-        if (error) {
-          toast.error(error.message);
-          return;
-        }
-        toast.success(`Account created — welcome, ${r.data.name.split(" ")[0]}!`);
-        navigate({ to: "/dashboard" });
-      } else {
-        const r = loginSchema.safeParse({ email, password });
-        if (!r.success) {
-          toast.error(r.error.issues[0].message);
-          return;
-        }
-        const { error } = await supabase.auth.signInWithPassword({
-          email: r.data.email,
-          password: r.data.password,
-        });
-        if (error) {
-          toast.error(error.message);
-          return;
-        }
-        toast.success("Signed in");
-        navigate({ to: "/dashboard" });
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
+  useEffect(() => {
+    if (!authLoading && user) navigate({ to: "/dashboard" });
+  }, [user, authLoading, navigate]);
 
   return (
-    <div className="relative grid min-h-screen lg:grid-cols-2">
-      <div className="relative hidden overflow-hidden bg-gradient-hero lg:block">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_30%,rgba(255,255,255,0.2),transparent_55%)]" />
-        <div className="relative flex h-full flex-col justify-between p-12 text-primary-foreground">
-          <Link to="/" className="flex items-center gap-2.5 w-fit">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary-foreground/20 backdrop-blur">
-              <HardHat className="h-5 w-5" />
-            </div>
-            <span className="font-display text-lg font-bold">SitePulse</span>
-          </Link>
-          <div>
-            <div className="mb-3 text-xs font-semibold uppercase tracking-widest text-primary-foreground/70">From the field</div>
-            <p className="font-display text-3xl leading-snug">
-              “We finished the warehouse two weeks early. SitePulse killed our WhatsApp chaos overnight.”
-            </p>
-            <div className="mt-6 text-sm text-primary-foreground/80">— Daniel O., Site Engineer · Lagos</div>
-          </div>
-        </div>
-      </div>
+    <div className="flex min-h-screen items-center justify-center bg-gradient-subtle px-4 py-12">
+      <div className="w-full max-w-md">
+        <Link to="/" className="mb-8 flex items-center justify-center gap-2">
+          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-primary text-primary-foreground shadow-md">
+            <HeartPulse className="h-5 w-5" />
+          </span>
+          <span className="font-display text-xl font-bold">Emergency Health ID</span>
+        </Link>
 
-      <div className="flex flex-col justify-center px-6 py-12 sm:px-12">
-        <div className="mx-auto w-full max-w-md">
-          <Link to="/" className="mb-8 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
-            <ArrowLeft className="h-4 w-4" /> Back to home
-          </Link>
-
-          <h1 className="font-display text-3xl font-bold">
-            {mode === "login" ? "Welcome back" : "Create your account"}
-          </h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            {mode === "login" ? "Sign in to your SitePulse workspace." : "Start tracking your first site in under a minute."}
-          </p>
-
-          <div className="mt-6 inline-flex rounded-full border border-border bg-secondary p-1">
-            {(["login", "signup"] as const).map((m) => (
-              <button
-                key={m}
-                onClick={() => setMode(m)}
-                className={
-                  "rounded-full px-5 py-1.5 text-sm font-medium transition " +
-                  (mode === m ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")
-                }
-              >
-                {m === "login" ? "Log in" : "Sign up"}
-              </button>
-            ))}
-          </div>
-
-          <form onSubmit={submit} className="mt-6 space-y-4">
-            {mode === "signup" && (
-              <div className="space-y-1.5">
-                <Label htmlFor="name">Full name</Label>
-                <Input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Sara Mensah" required maxLength={80} />
-              </div>
-            )}
-            <div className="space-y-1.5">
-              <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required maxLength={255} />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="password">Password</Label>
-              <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required maxLength={100} />
-            </div>
-            {mode === "signup" && (
-              <div className="space-y-1.5">
-                <Label>Role</Label>
-                <Select value={role} onValueChange={(v) => setRole(v as Role)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="admin">Admin</SelectItem>
-                    <SelectItem value="engineer">Engineer</SelectItem>
-                    <SelectItem value="worker">Worker</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-
-            <Button type="submit" disabled={loading} className="h-11 w-full bg-gradient-primary text-primary-foreground shadow-md hover:opacity-95">
-              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {mode === "login" ? "Sign in" : "Create account"}
-            </Button>
-          </form>
-
-          <p className="mt-6 text-center text-xs text-muted-foreground">
-            By continuing you agree to SitePulse’s Terms & Privacy.
-          </p>
+        <div className="rounded-2xl border border-border bg-card p-6 shadow-elegant sm:p-8">
+          <Tabs defaultValue="signin">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="signin">Sign in</TabsTrigger>
+              <TabsTrigger value="signup">Create account</TabsTrigger>
+            </TabsList>
+            <TabsContent value="signin"><SignInForm /></TabsContent>
+            <TabsContent value="signup"><SignUpForm /></TabsContent>
+          </Tabs>
         </div>
       </div>
     </div>
+  );
+}
+
+function SignInForm() {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
+
+  const onSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    setLoading(false);
+    if (error) return toast.error(error.message);
+    toast.success("Welcome back!");
+    navigate({ to: "/dashboard" });
+  };
+
+  return (
+    <form onSubmit={onSubmit} className="mt-6 space-y-4">
+      <div className="space-y-2">
+        <Label htmlFor="si-email">Email</Label>
+        <Input id="si-email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="si-password">Password</Label>
+        <Input id="si-password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
+      </div>
+      <Button type="submit" disabled={loading} className="w-full bg-gradient-primary text-primary-foreground hover:opacity-95">
+        {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Sign in"}
+      </Button>
+    </form>
+  );
+}
+
+function SignUpForm() {
+  const [form, setForm] = useState({ name: "", email: "", password: "", phone: "", dob: "", blood: "" });
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
+
+  const onSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    const { data, error } = await supabase.auth.signUp({
+      email: form.email,
+      password: form.password,
+      options: {
+        emailRedirectTo: `${window.location.origin}/dashboard`,
+        data: { name: form.name },
+      },
+    });
+    if (error) { setLoading(false); return toast.error(error.message); }
+
+    // Save extra fields on profile
+    if (data.user) {
+      await supabase.from("profiles").update({
+        name: form.name,
+        phone: form.phone || null,
+        date_of_birth: form.dob || null,
+        blood_group: form.blood || null,
+      }).eq("user_id", data.user.id);
+    }
+
+    setLoading(false);
+    toast.success("Account created!");
+    navigate({ to: "/dashboard" });
+  };
+
+  const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, [k]: e.target.value });
+
+  return (
+    <form onSubmit={onSubmit} className="mt-6 space-y-4">
+      <div className="space-y-2">
+        <Label htmlFor="su-name">Full name</Label>
+        <Input id="su-name" required value={form.name} onChange={set("name")} />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="su-email">Email</Label>
+        <Input id="su-email" type="email" required value={form.email} onChange={set("email")} />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="su-password">Password</Label>
+        <Input id="su-password" type="password" required minLength={6} value={form.password} onChange={set("password")} />
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-2">
+          <Label htmlFor="su-phone">Phone</Label>
+          <Input id="su-phone" value={form.phone} onChange={set("phone")} />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="su-dob">Date of birth</Label>
+          <Input id="su-dob" type="date" value={form.dob} onChange={set("dob")} />
+        </div>
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="su-blood">Blood group</Label>
+        <Input id="su-blood" placeholder="e.g. O+" value={form.blood} onChange={set("blood")} />
+      </div>
+      <Button type="submit" disabled={loading} className="w-full bg-gradient-primary text-primary-foreground hover:opacity-95">
+        {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Create Emergency ID"}
+      </Button>
+    </form>
   );
 }
